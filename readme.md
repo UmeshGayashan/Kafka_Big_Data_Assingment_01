@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Python > 3.12.4
-- venv
+- .venv
 - Pip
 
 ## Local Setup
@@ -32,7 +32,17 @@ python.exe -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-4. Run Producer
+4. Run Consumer
+
+```
+python .\consumer.py
+```
+5. Run Producer
+
+    ###### 🟢 Open another terminal
+```
+.\.venv\Scripts\activate.ps1  
+```
 
 ```
 python producer.py
