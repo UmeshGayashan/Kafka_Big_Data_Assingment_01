@@ -11,7 +11,7 @@
 1. Create a new virtual environment and activate
 
 ```
-python -m venv venv
+python -m venv .venv
 ```
 ```
 .\.venv\Scripts\activate.ps1  
