@@ -8,7 +8,17 @@
 
 ## Local Setup
 
-1. Create a new virtual environment and activate
+1. Start Kafka and Schema Registry with Docker
+
+```
+docker-compose up -d
+```
+
+This will start:
+- **Kafka** on `localhost:9092`
+- **Schema Registry** on `localhost:8081`
+
+2. Create a new virtual environment and activate
 
 ```
 python -m venv .venv
@@ -17,7 +27,7 @@ python -m venv .venv
 .\.venv\Scripts\activate.ps1  
 ```
 
-2. Install and upgrade pip
+3. Install and upgrade pip
 
 ```
 pip install --upgrade pip
@@ -26,18 +36,19 @@ pip install --upgrade pip
 python.exe -m pip install --upgrade pip
 ```
 
-3. Install dependencies
+4. Install dependencies
 
 ```
 pip install -r requirements.txt
 ```
 
-4. Run Consumer
+5. Run Consumer
 
 ```
 python .\consumer.py
 ```
-5. Run Producer
+
+6. Run Producer
 
     ###### 🟢 Open another terminal
 ```
