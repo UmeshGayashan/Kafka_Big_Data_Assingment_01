@@ -202,3 +202,84 @@ schema-registry:
 | Run Schema Registry           | Required for schema versioning + evolution          |
 
 ---
+
+
+* **Producer retries = 3**
+* **Consumer retries = 5**
+
+---
+
+# ✅ **Why Different Retry Counts Are Perfectly Fine**
+
+Producers and consumers face **different types of failures**, so they need **different retry strategies**.
+
+---
+
+# 🔵 **Producer Retry Logic (usually small, like 3)**
+
+Producer retries handle issues such as:
+
+* Temporary network failure
+* Kafka broker is overloaded
+* Leader election happening
+
+If the producer keeps retrying too much:
+
+* It can cause blocking
+* It slows down publishing new messages
+* Messages might be duplicated
+
+So producer retries are kept small:
+
+```
+2–5 retries (commonly 3)
+```
+
+---
+
+# 🟢 **Consumer Retry Logic (can be higher, like 5)**
+
+Consumers fail for different reasons:
+
+* External API call failed
+* Database temporarily down
+* Data processing error
+* Slow downstream system
+
+Consumers usually NEED more retries to recover.
+
+So they commonly use:
+
+```
+3–10 retries
+```
+
+And if still failing → send to **DLQ**.
+
+---
+
+# 🧠 **Why Consumers Should Retry More**
+
+Because consumers perform more operations:
+
+* Multiple system calls
+* Validations
+* Data transformations
+* Database writes
+
+Producers only *send* data, so they need fewer retries.
+
+---
+
+# 📝 Example Real-World Setup
+
+| Component | Typical Retries   | Reason                               |
+| --------- | ----------------- | ------------------------------------ |
+| Producer  | 2–3               | Fast fail to avoid blocking pipeline |
+| Consumer  | 5–7               | Allow external systems to recover    |
+| DLQ       | After max retries | Final safe storage                   |
+
+This setup is **industry standard**.
+
+---
+
