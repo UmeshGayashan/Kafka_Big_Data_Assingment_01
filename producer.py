@@ -7,6 +7,7 @@ from typing import Optional
 from confluent_kafka import Producer
 import avro.schema
 import avro.io
+from dlq_producer import DLQProducer
 
 # Retry configuration
 MAX_RETRIES = 3
@@ -42,6 +43,7 @@ producer_config = {
 }
 
 producer = Producer(producer_config)
+dlq_producer = DLQProducer()
 
 def delivery_report(err, msg):
     if err:
@@ -50,7 +52,7 @@ def delivery_report(err, msg):
         print(f"✅ Delivered message to {msg.topic()} : partition {msg.partition()} : at offset {msg.offset()}")
 
 def produce_with_retry(producer: Producer, topic: str, order: dict, retries: int = MAX_RETRIES) -> bool:
-    # Produce a message with automatic retry logic for temporary failures
+    """Produce a message with automatic retry logic for temporary failures"""
     for attempt in range(1, retries + 1):
         try:
             serialized_value = serialize_order(order)
@@ -68,9 +70,29 @@ def produce_with_retry(producer: Producer, topic: str, order: dict, retries: int
                 time.sleep(RETRY_BACKOFF_SECONDS)
             else:
                 print(f"❌ Failed to produce message after {retries} attempts: {e}")
+                # Send to DLQ on final failure
+                print(f"📨 Sending failed message to DLQ...")
+                dlq_producer.send_to_dlq(
+                    order_id=order['order_id'],
+                    product=order['product'],
+                    price=order['price'],
+                    error_reason=f"Max retries exceeded: {str(e)}",
+                    retry_count=retries,
+                    original_topic=topic
+                )
                 return False
         except Exception as e:
             print(f"❌ Unexpected error: {e}")
+            # Send to DLQ on unexpected error
+            print(f"📨 Sending failed message to DLQ...")
+            dlq_producer.send_to_dlq(
+                order_id=order['order_id'],
+                product=order['product'],
+                price=order['price'],
+                error_reason=f"Unexpected error: {str(e)}",
+                retry_count=attempt,
+                original_topic=topic
+            )
             return False
     
     return False
@@ -86,3 +108,5 @@ if produce_with_retry(producer, "orders", order):
     print("✅ Message produced successfully!")
 else:
     print("❌ Failed to produce message!")
+
+dlq_producer.close()
