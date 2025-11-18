@@ -6,6 +6,7 @@ from collections import defaultdict
 from confluent_kafka import Consumer
 import avro.schema
 import avro.io
+from dlq_producer import DLQProducer
 
 # Retry configuration
 MAX_RETRIES = 5
@@ -35,7 +36,7 @@ def deserialize_order(data):
     return reader.read(decoder)
 
 def create_consumer_with_retry(group_id: str, retries: int = MAX_RETRIES) -> Consumer:
-    # Create a consumer connection with automatic retry logic
+    """Create a consumer connection with automatic retry logic"""
     consumer_config = {
         "bootstrap.servers": "localhost:9092",
         "group.id": group_id,
@@ -66,6 +67,7 @@ def create_consumer_with_retry(group_id: str, retries: int = MAX_RETRIES) -> Con
 product_stats = defaultdict(lambda: {"total_price": 0.0, "count": 0, "running_avg": 0.0})
 
 consumer = create_consumer_with_retry("order-aggregation-consumers")
+dlq_producer = DLQProducer()
 
 print("🟢 Aggregation Consumer is running - Computing running averages per product")
 print("=" * 80)
@@ -118,6 +120,19 @@ try:
             print(f"   " + "=" * 50)
         except Exception as e:
             print(f"❌ Failed to process message: {e}")
+            # Send to DLQ on processing error
+            try:
+                order_data = deserialize_order(msg.value())
+                dlq_producer.send_to_dlq(
+                    order_id=order_data.get('order_id', 'unknown'),
+                    product=order_data.get('product', 'unknown'),
+                    price=order_data.get('price', 0.0),
+                    error_reason=f"Aggregation processing error: {str(e)}",
+                    retry_count=0,
+                    original_topic="orders"
+                )
+            except:
+                print(f"   ⚠️  Could not send to DLQ - unable to deserialize message")
             continue
 
 except KeyboardInterrupt:
@@ -135,3 +150,4 @@ except KeyboardInterrupt:
 
 finally:
     consumer.close()
+    dlq_producer.close()
